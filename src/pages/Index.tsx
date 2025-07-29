@@ -18,21 +18,13 @@ interface ActionLog {
   details: string;
 }
 
-interface LoginAccount {
-  id: string;
-  username: string;
-  password: string;
-  role: 'superadmin' | 'admin';
-  createdBy: string;
-  createdAt: string;
-}
-
 interface Admin {
   id: string;
   nickname: string;
   level: string;
-  department: string;
+  steamId: string;
   discordId: string;
+  lastActive: string;
   status: 'active' | 'vacation' | 'frozen';
   warns: number;
   notes: string;
@@ -44,9 +36,9 @@ const mockAdmins: Admin[] = [
     id: '1',
     nickname: 'SuperAdmin_RUS',
     level: 'Главный Администратор',
-    department: 'Отдел Модерации',
+    steamId: 'STEAM_0:1:123456789',
     discordId: 'SuperAdmin#1234',
-
+    lastActive: '2025-01-15 14:30',
     status: 'active',
     warns: 0,
     notes: 'Опытный администратор',
@@ -59,9 +51,9 @@ const mockAdmins: Admin[] = [
     id: '2',
     nickname: 'ModerPro',
     level: 'Старший Модератор',
-    department: 'Отдел Администрации',
+    steamId: 'STEAM_0:0:987654321',
     discordId: 'ModerPro#5678',
-
+    lastActive: '2025-01-15 12:15',
     status: 'active',
     warns: 1,
     notes: 'Активный модератор',
@@ -74,9 +66,9 @@ const mockAdmins: Admin[] = [
     id: '3',
     nickname: 'Helper_123',
     level: 'Помощник',
-    department: 'Отдел Поддержки',
+    steamId: 'STEAM_0:1:555666777',
     discordId: 'Helper123#9999',
-
+    lastActive: '2025-01-14 18:45',
     status: 'vacation',
     warns: 0,
     notes: 'Новичок в команде',
@@ -87,48 +79,26 @@ const mockAdmins: Admin[] = [
   }
 ];
 
-const mockLogins: LoginAccount[] = [
-  {
-    id: '1',
-    username: 'Zakhar_Kutikov',
-    password: 'zaxartop',
-    role: 'superadmin',
-    createdBy: 'System',
-    createdAt: '2024-01-01 00:00'
-  }
-];
-
 export default function Index() {
   const [admins, setAdmins] = useState<Admin[]>(mockAdmins);
-  const [loginAccounts, setLoginAccounts] = useState<LoginAccount[]>(mockLogins);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<LoginAccount | null>(null);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [isEditingAdmin, setIsEditingAdmin] = useState(false);
   const [adminProfile, setAdminProfile] = useState<Admin | null>(null);
   const [editingAdmin, setEditingAdmin] = useState<Partial<Admin>>({});
-  const [isAddingLogin, setIsAddingLogin] = useState(false);
-  const [newLogin, setNewLogin] = useState<Partial<LoginAccount>>({});
-  const [isGivingWarning, setIsGivingWarning] = useState(false);
-  const [warnAdmin, setWarnAdmin] = useState<Admin | null>(null);
-  const [warnReason, setWarnReason] = useState('');
   const [newAdmin, setNewAdmin] = useState<Partial<Admin>>({
     nickname: '',
     level: '',
-    department: '',
+    steamId: '',
     discordId: '',
     notes: ''
   });
 
   const handleLogin = () => {
-    const account = loginAccounts.find(acc => 
-      acc.username === loginData.username && acc.password === loginData.password
-    );
-    if (account) {
+    if (loginData.username === 'Zakhar_Kutikov' && loginData.password === 'zaxartop') {
       setIsAuthenticated(true);
-      setCurrentUser(account);
     }
   };
 
@@ -158,19 +128,20 @@ export default function Index() {
         level: newAdmin.level,
         steamId: newAdmin.steamId || '',
         discordId: newAdmin.discordId || '',
+        lastActive: new Date().toLocaleString('ru-RU'),
         status: 'active',
         warns: 0,
         notes: newAdmin.notes || '',
         actionHistory: [{
           id: '1',
           action: 'Добавлен в команду',
-          performedBy: currentUser?.username || 'System',
+          performedBy: 'Zakhar_Kutikov',
           date: new Date().toLocaleString('ru-RU'),
           details: 'Новый администратор добавлен в систему'
         }]
       };
       setAdmins([...admins, admin]);
-      setNewAdmin({ nickname: '', level: '', department: '', discordId: '', notes: '' });
+      setNewAdmin({ nickname: '', level: '', steamId: '', discordId: '', notes: '' });
       setIsAddingAdmin(false);
     }
   };
@@ -213,48 +184,6 @@ export default function Index() {
     setAdminProfile(admin);
   };
 
-  const handleAddLogin = () => {
-    if (newLogin.username && newLogin.password && currentUser?.role === 'superadmin') {
-      const login: LoginAccount = {
-        id: Date.now().toString(),
-        username: newLogin.username,
-        password: newLogin.password,
-        role: newLogin.role || 'admin',
-        createdBy: currentUser.username,
-        createdAt: new Date().toLocaleString('ru-RU')
-      };
-      setLoginAccounts([...loginAccounts, login]);
-      setNewLogin({});
-      setIsAddingLogin(false);
-    }
-  };
-
-  const handleGiveWarning = () => {
-    if (warnAdmin && warnReason) {
-      const updatedAdmins = admins.map(admin => {
-        if (admin.id === warnAdmin.id) {
-          const updatedAdmin = { ...admin, warns: admin.warns + 1 };
-          updatedAdmin.actionHistory = [
-            ...admin.actionHistory,
-            {
-              id: Date.now().toString(),
-              action: 'Выдан выговор',
-              performedBy: currentUser?.username || 'System',
-              date: new Date().toLocaleString('ru-RU'),
-              details: `Причина: ${warnReason}`
-            }
-          ];
-          return updatedAdmin;
-        }
-        return admin;
-      });
-      setAdmins(updatedAdmins);
-      setIsGivingWarning(false);
-      setWarnAdmin(null);
-      setWarnReason('');
-    }
-  };
-
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
@@ -262,14 +191,12 @@ export default function Index() {
           {/* Header */}
           <div className="text-center mb-12 animate-fade-in">
             <div className="flex items-center justify-center mb-6">
-              <img 
-                src="https://cdn.poehali.dev/files/3f81722e-0774-453d-9a40-6bbc7e41198b.png" 
-                alt="AURORA Logo" 
-                className="w-24 h-16 object-contain"
-              />
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center gradient-button animate-glow">
+                <Icon name="Shield" size={32} className="text-white" />
+              </div>
             </div>
             <h1 className="text-4xl font-bold text-white mb-4">
-              AURORA ADMINS
+              SAMP Admin Panel
             </h1>
             <p className="text-gray-300 text-lg">
               Система управления администрацией сервера
@@ -293,9 +220,8 @@ export default function Index() {
                       <TableRow className="border-gray-700">
                         <TableHead className="text-gray-300">Никнейм</TableHead>
                         <TableHead className="text-gray-300">Должность</TableHead>
-                        <TableHead className="text-gray-300">Отдел</TableHead>
                         <TableHead className="text-gray-300">Статус</TableHead>
-
+                        <TableHead className="text-gray-300">Последняя активность</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -309,9 +235,6 @@ export default function Index() {
                               {admin.level}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-gray-300 text-sm">
-                            {admin.department}
-                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${getStatusColor(admin.status)}`} />
@@ -320,17 +243,9 @@ export default function Index() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openAdminProfile(admin)}
-                              className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                            >
-                              Профиль
-                            </Button>
+                          <TableCell className="text-gray-300 text-sm">
+                            {admin.lastActive}
                           </TableCell>
-
                         </TableRow>
                       ))}
                     </TableBody>
@@ -378,7 +293,7 @@ export default function Index() {
                   Войти в панель
                 </Button>
                 <div className="text-center text-gray-400 text-sm">
-                  Доступ для суперадмина
+                  Доступ для суперадмина: Zakhar_Kutikov / zaxartop
                 </div>
               </CardContent>
             </Card>
@@ -443,13 +358,11 @@ export default function Index() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 animate-fade-in">
           <div className="flex items-center gap-4">
-            <img 
-              src="https://cdn.poehali.dev/files/3f81722e-0774-453d-9a40-6bbc7e41198b.png" 
-              alt="AURORA Logo" 
-              className="w-16 h-12 object-contain"
-            />
+            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center gradient-button">
+              <Icon name="Shield" size={24} className="text-white" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">AURORA ADMINS</h1>
+              <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
               <p className="text-gray-300">Управление администрацией сервера</p>
             </div>
           </div>
@@ -471,26 +384,13 @@ export default function Index() {
                 <Icon name="Settings" size={24} />
                 Управление Администраторами
               </div>
-              <div className="flex gap-2">
-                <Dialog open={isAddingAdmin} onOpenChange={setIsAddingAdmin}>
-                  <DialogTrigger asChild>
-                    <Button className="gradient-button hover:opacity-90">
-                      <Icon name="Plus" size={20} className="mr-2" />
-                      Добавить админа
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-                {currentUser?.role === 'superadmin' && (
-                  <Dialog open={isAddingLogin} onOpenChange={setIsAddingLogin}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                        <Icon name="UserPlus" size={20} className="mr-2" />
-                        Создать логин
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                )}
-              </div>
+              <Dialog open={isAddingAdmin} onOpenChange={setIsAddingAdmin}>
+                <DialogTrigger asChild>
+                  <Button className="gradient-button hover:opacity-90">
+                    <Icon name="Plus" size={20} className="mr-2" />
+                    Добавить администратора
+                  </Button>
+                </DialogTrigger>
                 <DialogContent className="bg-gray-900 border-gray-700">
                   <DialogHeader>
                     <DialogTitle className="text-white">Новый администратор</DialogTitle>
@@ -521,19 +421,13 @@ export default function Index() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-gray-300">Отдел</Label>
-                      <Select value={newAdmin.department} onValueChange={(value) => setNewAdmin({...newAdmin, department: value})}>
-                        <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                          <SelectValue placeholder="Выберите отдел" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          <SelectItem value="Отдел Модерации">Отдел Модерации</SelectItem>
-                          <SelectItem value="Отдел Администрации">Отдел Администрации</SelectItem>
-                          <SelectItem value="Отдел Поддержки">Отдел Поддержки</SelectItem>
-                          <SelectItem value="Отдел Развития">Отдел Развития</SelectItem>
-                          <SelectItem value="Отдел Безопасности">Отдел Безопасности</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-gray-300">Steam ID</Label>
+                      <Input
+                        value={newAdmin.steamId}
+                        onChange={(e) => setNewAdmin({...newAdmin, steamId: e.target.value})}
+                        className="bg-gray-800 border-gray-600 text-white"
+                        placeholder="STEAM_0:1:123456789"
+                      />
                     </div>
                     <div>
                       <Label className="text-gray-300">Discord ID</Label>
@@ -572,10 +466,11 @@ export default function Index() {
                   <TableRow className="border-gray-700">
                     <TableHead className="text-gray-300">Никнейм</TableHead>
                     <TableHead className="text-gray-300">Должность</TableHead>
-                    <TableHead className="text-gray-300">Отдел</TableHead>
+                    <TableHead className="text-gray-300">Steam ID</TableHead>
                     <TableHead className="text-gray-300">Discord</TableHead>
                     <TableHead className="text-gray-300">Статус</TableHead>
                     <TableHead className="text-gray-300">Предупреждения</TableHead>
+                    <TableHead className="text-gray-300">Последняя активность</TableHead>
                     <TableHead className="text-gray-300">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -590,8 +485,8 @@ export default function Index() {
                           {admin.level}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-gray-300 text-sm">
-                        {admin.department}
+                      <TableCell className="text-gray-300 font-mono text-sm">
+                        {admin.steamId}
                       </TableCell>
                       <TableCell className="text-gray-300 text-sm">
                         {admin.discordId}
@@ -609,14 +504,16 @@ export default function Index() {
                           {admin.warns}
                         </Badge>
                       </TableCell>
-
+                      <TableCell className="text-gray-300 text-sm">
+                        {admin.lastActive}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => openAdminProfile(admin)}
-                            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                            className="border-gray-600 text-gray-300 hover:bg-gray-800 mr-1"
                           >
                             <Icon name="User" size={16} />
                           </Button>
@@ -627,17 +524,6 @@ export default function Index() {
                             className="border-gray-600 text-gray-300 hover:bg-gray-800"
                           >
                             <Icon name="Edit" size={16} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setWarnAdmin(admin);
-                              setIsGivingWarning(true);
-                            }}
-                            className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/20"
-                          >
-                            <Icon name="AlertTriangle" size={16} />
                           </Button>
                           <Button
                             size="sm"
@@ -700,19 +586,12 @@ export default function Index() {
                 </Select>
               </div>
               <div>
-                <Label className="text-gray-300">Отдел</Label>
-                <Select value={editingAdmin.department || ''} onValueChange={(value) => setEditingAdmin({...editingAdmin, department: value})}>
-                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="Отдел Модерации">Отдел Модерации</SelectItem>
-                    <SelectItem value="Отдел Администрации">Отдел Администрации</SelectItem>
-                    <SelectItem value="Отдел Поддержки">Отдел Поддержки</SelectItem>
-                    <SelectItem value="Отдел Развития">Отдел Развития</SelectItem>
-                    <SelectItem value="Отдел Безопасности">Отдел Безопасности</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-gray-300">Steam ID</Label>
+                <Input
+                  value={editingAdmin.steamId || ''}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, steamId: e.target.value})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
               </div>
               <div>
                 <Label className="text-gray-300">Discord ID</Label>
@@ -772,8 +651,8 @@ export default function Index() {
                         </Badge>
                       </div>
                       <div>
-                        <Label className="text-gray-400 text-sm">Отдел</Label>
-                        <p className="text-gray-300 text-sm">{adminProfile.department}</p>
+                        <Label className="text-gray-400 text-sm">Steam ID</Label>
+                        <p className="text-gray-300 font-mono text-sm">{adminProfile.steamId}</p>
                       </div>
                       <div>
                         <Label className="text-gray-400 text-sm">Discord</Label>
@@ -827,86 +706,6 @@ export default function Index() {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Login Dialog - только для суперадмина */}
-        <Dialog open={isAddingLogin} onOpenChange={setIsAddingLogin}>
-          <DialogContent className="bg-gray-900 border-gray-700 max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-white">Создание нового логина</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-gray-300">Логин</Label>
-                <Input
-                  value={newLogin.username || ''}
-                  onChange={(e) => setNewLogin({...newLogin, username: e.target.value})}
-                  className="bg-gray-800 border-gray-600 text-white"
-                  placeholder="Введите логин"
-                />
-              </div>
-              <div>
-                <Label className="text-gray-300">Пароль</Label>
-                <Input
-                  value={newLogin.password || ''}
-                  onChange={(e) => setNewLogin({...newLogin, password: e.target.value})}
-                  className="bg-gray-800 border-gray-600 text-white"
-                  placeholder="Введите пароль"
-                />
-              </div>
-              <div>
-                <Label className="text-gray-300">Роль</Label>
-                <Select value={newLogin.role || 'admin'} onValueChange={(value) => setNewLogin({...newLogin, role: value as any})}>
-                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="admin">Администратор</SelectItem>
-                    <SelectItem value="superadmin">Суперадмин</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleAddLogin} className="w-full gradient-button">
-                Создать логин
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Give Warning Dialog */}
-        <Dialog open={isGivingWarning} onOpenChange={setIsGivingWarning}>
-          <DialogContent className="bg-gray-900 border-gray-700 max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-white">Выдача выговора</DialogTitle>
-            </DialogHeader>
-            {warnAdmin && (
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-800 rounded-lg">
-                  <p className="text-white font-medium">{warnAdmin.nickname}</p>
-                  <p className="text-gray-300 text-sm">{warnAdmin.level}</p>
-                  <p className="text-gray-400 text-xs">Текущих выговоров: {warnAdmin.warns}</p>
-                </div>
-                <div>
-                  <Label className="text-gray-300">Причина выговора</Label>
-                  <Textarea
-                    value={warnReason}
-                    onChange={(e) => setWarnReason(e.target.value)}
-                    className="bg-gray-800 border-gray-600 text-white"
-                    placeholder="Укажите причину выговора..."
-                    rows={4}
-                  />
-                </div>
-                <Button 
-                  onClick={handleGiveWarning} 
-                  className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
-                  disabled={!warnReason.trim()}
-                >
-                  <Icon name="AlertTriangle" size={20} className="mr-2" />
-                  Выдать выговор
-                </Button>
               </div>
             )}
           </DialogContent>

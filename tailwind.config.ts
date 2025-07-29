@@ -19,12 +19,12 @@ export default {
 		},
 		extend: {
 			colors: {
-				orange: {
-					DEFAULT: '#FF8C00',
-					50: '#FFF7ED',
-					500: '#FF8C00',
-					600: '#FF7A00',
-					700: '#E06900'
+				indigo: {
+					DEFAULT: '#6366F1',
+					50: '#EEF2FF',
+					500: '#6366F1',
+					600: '#4F46E5',
+					700: '#4338CA'
 				},
 				gray: {
 					DEFAULT: '#1E293B',
