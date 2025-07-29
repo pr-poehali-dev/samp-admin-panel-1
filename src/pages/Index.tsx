@@ -10,6 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 
+interface ActionLog {
+  id: string;
+  action: string;
+  performedBy: string;
+  date: string;
+  details: string;
+}
+
 interface Admin {
   id: string;
   nickname: string;
@@ -17,9 +25,10 @@ interface Admin {
   steamId: string;
   discordId: string;
   lastActive: string;
-  status: 'online' | 'offline' | 'vacation';
+  status: 'active' | 'vacation' | 'frozen';
   warns: number;
   notes: string;
+  actionHistory: ActionLog[];
 }
 
 const mockAdmins: Admin[] = [
@@ -30,9 +39,13 @@ const mockAdmins: Admin[] = [
     steamId: 'STEAM_0:1:123456789',
     discordId: 'SuperAdmin#1234',
     lastActive: '2025-01-15 14:30',
-    status: 'online',
+    status: 'active',
     warns: 0,
-    notes: 'Опытный администратор'
+    notes: 'Опытный администратор',
+    actionHistory: [
+      { id: '1', action: 'Назначен главным администратором', performedBy: 'Zakhar_Kutikov', date: '2024-12-01 10:00', details: 'Первоначальное назначение' },
+      { id: '2', action: 'Обновлен Discord ID', performedBy: 'Zakhar_Kutikov', date: '2025-01-10 15:30', details: 'Изменен Discord контакт' }
+    ]
   },
   {
     id: '2',
@@ -41,9 +54,13 @@ const mockAdmins: Admin[] = [
     steamId: 'STEAM_0:0:987654321',
     discordId: 'ModerPro#5678',
     lastActive: '2025-01-15 12:15',
-    status: 'online',
+    status: 'active',
     warns: 1,
-    notes: 'Активный модератор'
+    notes: 'Активный модератор',
+    actionHistory: [
+      { id: '1', action: 'Назначен старшим модератором', performedBy: 'Zakhar_Kutikov', date: '2024-11-15 14:20', details: 'Повышение с модератора' },
+      { id: '2', action: 'Выдано предупреждение', performedBy: 'SuperAdmin_RUS', date: '2025-01-05 16:45', details: 'Нарушение процедуры модерации' }
+    ]
   },
   {
     id: '3',
@@ -52,9 +69,13 @@ const mockAdmins: Admin[] = [
     steamId: 'STEAM_0:1:555666777',
     discordId: 'Helper123#9999',
     lastActive: '2025-01-14 18:45',
-    status: 'offline',
+    status: 'vacation',
     warns: 0,
-    notes: 'Новичок в команде'
+    notes: 'Новичок в команде',
+    actionHistory: [
+      { id: '1', action: 'Назначен помощником', performedBy: 'Zakhar_Kutikov', date: '2025-01-01 12:00', details: 'Новый сотрудник' },
+      { id: '2', action: 'Переведен в отпуск', performedBy: 'SuperAdmin_RUS', date: '2025-01-14 18:45', details: 'Запрос на отпуск одобрен' }
+    ]
   }
 ];
 
@@ -64,6 +85,9 @@ export default function Index() {
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  const [isEditingAdmin, setIsEditingAdmin] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<Admin | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<Partial<Admin>>({});
   const [newAdmin, setNewAdmin] = useState<Partial<Admin>>({
     nickname: '',
     level: '',
@@ -73,25 +97,25 @@ export default function Index() {
   });
 
   const handleLogin = () => {
-    if (loginData.username === 'admin' && loginData.password === 'password') {
+    if (loginData.username === 'Zakhar_Kutikov' && loginData.password === 'zaxartop') {
       setIsAuthenticated(true);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'bg-green-500';
-      case 'offline': return 'bg-gray-500';
+      case 'active': return 'bg-green-500';
       case 'vacation': return 'bg-yellow-500';
+      case 'frozen': return 'bg-blue-500';
       default: return 'bg-gray-500';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'online': return 'В сети';
-      case 'offline': return 'Не в сети';
+      case 'active': return 'Активен';
       case 'vacation': return 'В отпуске';
+      case 'frozen': return 'В заморозке';
       default: return 'Неизвестно';
     }
   };
@@ -105,9 +129,16 @@ export default function Index() {
         steamId: newAdmin.steamId || '',
         discordId: newAdmin.discordId || '',
         lastActive: new Date().toLocaleString('ru-RU'),
-        status: 'offline',
+        status: 'active',
         warns: 0,
-        notes: newAdmin.notes || ''
+        notes: newAdmin.notes || '',
+        actionHistory: [{
+          id: '1',
+          action: 'Добавлен в команду',
+          performedBy: 'Zakhar_Kutikov',
+          date: new Date().toLocaleString('ru-RU'),
+          details: 'Новый администратор добавлен в систему'
+        }]
       };
       setAdmins([...admins, admin]);
       setNewAdmin({ nickname: '', level: '', steamId: '', discordId: '', notes: '' });
@@ -117,6 +148,40 @@ export default function Index() {
 
   const handleDeleteAdmin = (id: string) => {
     setAdmins(admins.filter(admin => admin.id !== id));
+  };
+
+  const handleEditAdmin = (admin: Admin) => {
+    setEditingAdmin(admin);
+    setIsEditingAdmin(true);
+  };
+
+  const handleUpdateAdmin = () => {
+    if (editingAdmin.id) {
+      const updatedAdmins = admins.map(admin => {
+        if (admin.id === editingAdmin.id) {
+          const updatedAdmin = { ...admin, ...editingAdmin };
+          updatedAdmin.actionHistory = [
+            ...admin.actionHistory,
+            {
+              id: Date.now().toString(),
+              action: 'Данные обновлены',
+              performedBy: 'Zakhar_Kutikov',
+              date: new Date().toLocaleString('ru-RU'),
+              details: 'Профиль администратора обновлен'
+            }
+          ];
+          return updatedAdmin;
+        }
+        return admin;
+      });
+      setAdmins(updatedAdmins);
+      setIsEditingAdmin(false);
+      setEditingAdmin({});
+    }
+  };
+
+  const openAdminProfile = (admin: Admin) => {
+    setAdminProfile(admin);
   };
 
   if (!isAuthenticated) {
@@ -228,7 +293,7 @@ export default function Index() {
                   Войти в панель
                 </Button>
                 <div className="text-center text-gray-400 text-sm">
-                  Тестовый доступ: admin / password
+                  Доступ для суперадмина: Zakhar_Kutikov / zaxartop
                 </div>
               </CardContent>
             </Card>
@@ -254,9 +319,9 @@ export default function Index() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-300 text-sm">В сети</p>
+                    <p className="text-gray-300 text-sm">Активных</p>
                     <p className="text-2xl font-bold text-white">
-                      {admins.filter(a => a.status === 'online').length}
+                      {admins.filter(a => a.status === 'active').length}
                     </p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -447,7 +512,15 @@ export default function Index() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setSelectedAdmin(admin)}
+                            onClick={() => openAdminProfile(admin)}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-800 mr-1"
+                          >
+                            <Icon name="User" size={16} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditAdmin(admin)}
                             className="border-gray-600 text-gray-300 hover:bg-gray-800"
                           >
                             <Icon name="Edit" size={16} />
@@ -468,6 +541,175 @@ export default function Index() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Edit Admin Dialog */}
+        <Dialog open={isEditingAdmin} onOpenChange={setIsEditingAdmin}>
+          <DialogContent className="bg-gray-900 border-gray-700 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white">Редактирование администратора</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-gray-300">Никнейм</Label>
+                <Input
+                  value={editingAdmin.nickname || ''}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, nickname: e.target.value})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Должность</Label>
+                <Select value={editingAdmin.level || ''} onValueChange={(value) => setEditingAdmin({...editingAdmin, level: value})}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectItem value="Помощник">Помощник</SelectItem>
+                    <SelectItem value="Модератор">Модератор</SelectItem>
+                    <SelectItem value="Старший Модератор">Старший Модератор</SelectItem>
+                    <SelectItem value="Администратор">Администратор</SelectItem>
+                    <SelectItem value="Главный Администратор">Главный Администратор</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-300">Статус</Label>
+                <Select value={editingAdmin.status || ''} onValueChange={(value) => setEditingAdmin({...editingAdmin, status: value as any})}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectItem value="active">Активен</SelectItem>
+                    <SelectItem value="vacation">В отпуске</SelectItem>
+                    <SelectItem value="frozen">В заморозке</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-300">Steam ID</Label>
+                <Input
+                  value={editingAdmin.steamId || ''}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, steamId: e.target.value})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Discord ID</Label>
+                <Input
+                  value={editingAdmin.discordId || ''}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, discordId: e.target.value})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Предупреждения</Label>
+                <Input
+                  type="number"
+                  value={editingAdmin.warns || 0}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, warns: parseInt(e.target.value) || 0})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Заметки</Label>
+                <Textarea
+                  value={editingAdmin.notes || ''}
+                  onChange={(e) => setEditingAdmin({...editingAdmin, notes: e.target.value})}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+              <Button onClick={handleUpdateAdmin} className="w-full gradient-button">
+                Сохранить изменения
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Admin Profile Dialog */}
+        <Dialog open={!!adminProfile} onOpenChange={() => setAdminProfile(null)}>
+          <DialogContent className="bg-gray-900 border-gray-700 max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Icon name="User" size={24} />
+                Профиль администратора: {adminProfile?.nickname}
+              </DialogTitle>
+            </DialogHeader>
+            {adminProfile && (
+              <div className="space-y-6">
+                {/* Admin Info */}
+                <Card className="gradient-card border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-400 text-sm">Никнейм</Label>
+                        <p className="text-white font-medium">{adminProfile.nickname}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm">Должность</Label>
+                        <Badge variant="outline" className="text-primary border-primary">
+                          {adminProfile.level}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm">Steam ID</Label>
+                        <p className="text-gray-300 font-mono text-sm">{adminProfile.steamId}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm">Discord</Label>
+                        <p className="text-gray-300 text-sm">{adminProfile.discordId}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm">Статус</Label>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${getStatusColor(adminProfile.status)}`} />
+                          <span className="text-gray-300 text-sm">
+                            {getStatusText(adminProfile.status)}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm">Предупреждения</Label>
+                        <Badge variant={adminProfile.warns > 0 ? "destructive" : "secondary"}>
+                          {adminProfile.warns}
+                        </Badge>
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-gray-400 text-sm">Заметки</Label>
+                        <p className="text-gray-300 text-sm">{adminProfile.notes || 'Нет заметок'}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Action History */}
+                <Card className="gradient-card border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Icon name="History" size={20} />
+                      История действий
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {adminProfile.actionHistory.map((action) => (
+                        <div key={action.id} className="border-l-2 border-primary pl-4 pb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-white font-medium text-sm">{action.action}</h4>
+                            <span className="text-gray-400 text-xs">{action.date}</span>
+                          </div>
+                          <p className="text-gray-300 text-sm mb-1">{action.details}</p>
+                          <p className="text-gray-400 text-xs">
+                            Выполнил: <span className="text-primary">{action.performedBy}</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
