@@ -559,12 +559,17 @@ export default function Index() {
                   </div>
                 </DialogContent>
               </Dialog>
-            </CardTitle>
-          </CardHeader>
-        </Card>
+            </div>
+          )}
+        </div>
 
         {/* Admin Table with Management */}
         <Card className="gradient-card border-0 animate-fade-in">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-white mb-6 text-center">
+              AURORA ADMINS
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <Table>
